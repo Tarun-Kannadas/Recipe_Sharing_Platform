@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { Recipe as SupabaseRecipe } from '@/lib/types/database'
+import { SiteHeader } from '@/components/site-header'
 
 // Mock recipe interface for fallback data
 interface MockRecipe {
@@ -14,7 +15,7 @@ interface MockRecipe {
 }
 
 export default async function Home() {
-  const supabase = createClient()
+  const supabase = await createClient()
   
   // Fetch recipes from Supabase
   const { data: recipes, error } = await supabase
@@ -103,24 +104,6 @@ function getMockRecipes(): MockRecipe[] {
       saves: 58,
     },
   ];
-}
-
-function SiteHeader() {
-  return (
-    <header className="border-b border-border/60">
-      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 md:px-8 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="size-6 rounded-md bg-primary" />
-          <span className="text-base sm:text-lg font-semibold tracking-tight">RecipeShare</span>
-        </div>
-        <nav className="hidden sm:flex items-center gap-4 text-sm text-muted-foreground">
-          <a className="hover:text-foreground transition-colors" href="#">Explore</a>
-          <a className="hover:text-foreground transition-colors" href="#">My Recipes</a>
-          <a className="hover:text-foreground transition-colors" href="#">Profile</a>
-        </nav>
-      </div>
-    </header>
-  );
 }
 
 function HeroSection() {
@@ -235,6 +218,6 @@ function SiteFooter() {
         <span>© {new Date().getFullYear()} RecipeShare</span>
         <a className="hover:text-foreground" href="#">About</a>
       </div>
-    </footer>
+      </footer>
   );
 }
