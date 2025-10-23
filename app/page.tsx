@@ -1,18 +1,8 @@
-export default function Home() {
-  return (
-    <div className="min-h-screen bg-background text-foreground">
-      <SiteHeader />
-      <main className="mx-auto w-full max-w-6xl px-4 sm:px-6 md:px-8 py-8 sm:py-10">
-        <HeroSection />
-        <SearchAndFilters />
-        <RecipeGrid />
-      </main>
-      <SiteFooter />
-    </div>
-  );
-}
+import { createClient } from '@/lib/supabase/server'
+import { Recipe as SupabaseRecipe } from '@/lib/types/database'
 
-interface Recipe {
+// Mock recipe interface for fallback data
+interface MockRecipe {
   id: string;
   title: string;
   description: string;
@@ -23,7 +13,34 @@ interface Recipe {
   saves: number;
 }
 
-function getMockRecipes(): Recipe[] {
+export default async function Home() {
+  const supabase = createClient()
+  
+  // Fetch recipes from Supabase
+  const { data: recipes, error } = await supabase
+    .from('recipes')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching recipes:', error)
+  }
+
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <SiteHeader />
+      <main className="mx-auto w-full max-w-6xl px-4 sm:px-6 md:px-8 py-8 sm:py-10">
+        <HeroSection />
+        <SearchAndFilters />
+        <RecipeGrid recipes={recipes || []} />
+      </main>
+      <SiteFooter />
+    </div>
+  );
+}
+
+// Mock data for when no recipes exist
+function getMockRecipes(): MockRecipe[] {
   return [
     {
       id: "1",
@@ -144,41 +161,65 @@ function SearchAndFilters() {
   );
 }
 
-function RecipeGrid() {
-  const recipes = getMockRecipes();
+function RecipeGrid({ recipes }: { recipes: SupabaseRecipe[] }) {
+  // Use mock data if no recipes from Supabase
+  const displayRecipes = recipes.length > 0 ? recipes : getMockRecipes();
+  
   return (
     <section className="mt-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
-        {recipes.map((recipe) => (
-          <RecipeCard key={recipe.id} recipe={recipe} />)
-        )}
+        {displayRecipes.map((recipe) => (
+          <RecipeCard key={recipe.id} recipe={recipe} />
+        ))}
       </div>
     </section>
   );
 }
 
-function RecipeCard({ recipe }: { recipe: Recipe }) {
+function RecipeCard({ recipe }: { recipe: SupabaseRecipe | MockRecipe }) {
+  // Handle both Supabase and mock data structures
+  const isSupabaseRecipe = 'ingredients' in recipe;
+  
   return (
     <article className="group rounded-lg border border-border bg-card text-card-foreground overflow-hidden">
       <div className="relative aspect-[16/10] bg-muted">
-        <img
-          src={recipe.imageUrl}
-          alt={recipe.title}
-          className="absolute inset-0 size-full object-cover"
-          loading="lazy"
-        />
+        {isSupabaseRecipe ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+            <div className="text-4xl">🍽️</div>
+          </div>
+        ) : (
+          <img
+            src={(recipe as MockRecipe).imageUrl}
+            alt={recipe.title}
+            className="absolute inset-0 size-full object-cover"
+            loading="lazy"
+          />
+        )}
       </div>
       <div className="p-4 flex flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-base font-semibold leading-snug line-clamp-2">{recipe.title}</h3>
-          <span className="shrink-0 rounded-full bg-secondary text-secondary-foreground px-2 py-0.5 text-[10px] uppercase tracking-wide">{recipe.category}</span>
+          <span className="shrink-0 rounded-full bg-secondary text-secondary-foreground px-2 py-0.5 text-[10px] uppercase tracking-wide">
+            {isSupabaseRecipe ? recipe.category || 'Recipe' : recipe.category}
+          </span>
         </div>
-        <p className="text-sm text-muted-foreground line-clamp-2">{recipe.description}</p>
+        <p className="text-sm text-muted-foreground line-clamp-2">
+          {isSupabaseRecipe ? recipe.ingredients.substring(0, 100) + '...' : (recipe as MockRecipe).description}
+        </p>
         <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
           <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-1">❤️ {recipe.likes}</span>
-            <span className="inline-flex items-center gap-1">💬 {recipe.comments}</span>
-            <span className="inline-flex items-center gap-1">🔖 {recipe.saves}</span>
+            {isSupabaseRecipe ? (
+              <>
+                <span className="inline-flex items-center gap-1">⏱️ {recipe.cooking_time || 'N/A'}min</span>
+                <span className="inline-flex items-center gap-1">📊 {recipe.difficulty || 'N/A'}</span>
+              </>
+            ) : (
+              <>
+                <span className="inline-flex items-center gap-1">❤️ {(recipe as MockRecipe).likes}</span>
+                <span className="inline-flex items-center gap-1">💬 {(recipe as MockRecipe).comments}</span>
+                <span className="inline-flex items-center gap-1">🔖 {(recipe as MockRecipe).saves}</span>
+              </>
+            )}
           </div>
           <button className="rounded-md border border-border px-2 py-1 hover:bg-accent hover:text-accent-foreground">View</button>
         </div>
